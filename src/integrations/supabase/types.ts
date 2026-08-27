@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assessments: {
+        Row: {
+          created_at: string
+          duration: string
+          id: string
+          rainy_season: string
+          results: Json
+          severity: string
+          suggestions: string[]
+          symptoms: string[]
+          updated_at: string
+          user_id: string
+          warnings: string[]
+        }
+        Insert: {
+          created_at?: string
+          duration?: string
+          id?: string
+          rainy_season?: string
+          results?: Json
+          severity?: string
+          suggestions?: string[]
+          symptoms?: string[]
+          updated_at?: string
+          user_id: string
+          warnings?: string[]
+        }
+        Update: {
+          created_at?: string
+          duration?: string
+          id?: string
+          rainy_season?: string
+          results?: Json
+          severity?: string
+          suggestions?: string[]
+          symptoms?: string[]
+          updated_at?: string
+          user_id?: string
+          warnings?: string[]
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

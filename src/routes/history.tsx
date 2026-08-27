@@ -6,9 +6,9 @@ import { Dialog } from "@/components/Dialog";
 import {
   formatDate,
   listAssessments,
-  seedDemoAssessments,
   type Assessment,
 } from "@/lib/assessments";
+import { useAuth } from "@/lib/auth";
 import { symptomLabel } from "@/lib/knowledge";
 import { cn } from "@/lib/utils";
 
@@ -33,15 +33,35 @@ export const Route = createFileRoute("/history")({
 });
 
 function HistoryPage() {
+  const { user, loading } = useAuth();
   const [items, setItems] = useState<Assessment[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [active, setActive] = useState<Assessment | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    seedDemoAssessments();
-    setItems(listAssessments());
-    setLoaded(true);
-  }, []);
+    if (loading) return;
+    if (!user) {
+      setItems([]);
+      setLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    setLoaded(false);
+    listAssessments()
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not load history.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">

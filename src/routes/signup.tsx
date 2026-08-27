@@ -31,13 +31,17 @@ function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const submit = (e: FormEvent) => {
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
     }
-    const result = signUp(name.trim(), email.trim(), password);
+    setBusy(true);
+    const result = await signUp(name.trim(), email.trim(), password);
+    setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -117,9 +121,9 @@ function SignupPage() {
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             <UserPlus className="size-4" />
-            Sign Up
+            {busy ? "Creating account…" : "Sign Up"}
           </Button>
         </form>
 

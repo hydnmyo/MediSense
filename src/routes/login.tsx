@@ -28,9 +28,13 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const submit = (e: FormEvent) => {
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const result = logIn(email.trim(), password);
+    setBusy(true);
+    const result = await logIn(email.trim(), password);
+    setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -95,9 +99,9 @@ function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             <LogIn className="size-4" />
-            Log In
+            {busy ? "Logging in…" : "Log In"}
           </Button>
         </form>
 

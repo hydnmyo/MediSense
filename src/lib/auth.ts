@@ -1,99 +1,77 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 /*
- * Mock frontend-only auth for the prototype.
- * Accounts and session live in localStorage; no real backend is involved.
+ * Supabase-backed authentication for MediSense.
  */
 
 export interface User {
+  id: string;
   name: string;
   email: string;
 }
 
-interface StoredAccount extends User {
-  password: string;
+function toUser(session: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null): User | null {
+  if (!session?.user) return null;
+  const meta = session.user.user_metadata ?? {};
+  const name = (typeof meta['name'] === "string" && meta['name']) || session.user.email?.split("@")[0] || "User";
+  return { id: session.user.id, name, email: session.user.email ?? "" };
 }
 
-const USERS_KEY = "medisense:users";
-const SESSION_KEY = "medisense:session";
-const AUTH_EVENT = "medisense-auth";
-
-function readUsers(): Record<string, StoredAccount> {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-function readSession(): User | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
-
-function notify() {
-  window.dispatchEvent(new Event(AUTH_EVENT));
-}
-
-export function getCurrentUser(): User | null {
-  if (typeof window === "undefined") return null;
-  return readSession();
-}
-
-export function signUp(
+export async function signUp(
   name: string,
   email: string,
   password: string,
-): { ok: true } | { ok: false; error: string } {
-  const users = readUsers();
-  const key = email.toLowerCase();
-  if (users[key]) return { ok: false, error: "An account with this email already exists." };
-  users[key] = { name, email: key, password };
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ name, email: key }));
-  notify();
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name },
+      emailRedirectTo: `${window.location.origin}/`,
+    },
+  });
+  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
 
-export function logIn(
+export async function logIn(
   email: string,
   password: string,
-): { ok: true } | { ok: false; error: string } {
-  const users = readUsers();
-  const account = users[email.toLowerCase()];
-  if (!account || account.password !== password) {
-    return { ok: false, error: "Invalid email or password." };
-  }
-  localStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({ name: account.name, email: account.email }),
-  );
-  notify();
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
 
-export function logOut() {
-  localStorage.removeItem(SESSION_KEY);
-  notify();
+export async function logOut() {
+  await supabase.auth.signOut();
 }
 
-function subscribe(callback: () => void) {
-  window.addEventListener(AUTH_EVENT, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    window.removeEventListener(AUTH_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
+export async function getCurrentUser(): Promise<User | null> {
+  const { data } = await supabase.auth.getSession();
+  return toUser(data.session);
+}
+
+export function useAuth(): { user: User | null; loading: boolean } {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(toUser(session));
+      setLoading(false);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(toUser(data.session));
+      setLoading(false);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  return { user, loading };
 }
 
 export function useUser(): User | null {
-  return useSyncExternalStore(
-    subscribe,
-    () => localStorage.getItem(SESSION_KEY),
-    () => null,
-  ) ? readSession() : null;
+  return useAuth().user;
 }

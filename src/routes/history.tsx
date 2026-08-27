@@ -6,9 +6,9 @@ import { Dialog } from "@/components/Dialog";
 import {
   formatDate,
   listAssessments,
-  seedDemoAssessments,
   type Assessment,
 } from "@/lib/assessments";
+import { useAuth } from "@/lib/auth";
 import { symptomLabel } from "@/lib/knowledge";
 import { cn } from "@/lib/utils";
 

@@ -75,7 +75,7 @@ function HistoryPage() {
             Assessment History
           </h1>
           <p className="mt-3 max-w-xl text-muted-foreground">
-            Your saved health checks, stored privately in this browser.
+            Your saved health checks, stored securely with your account.
           </p>
         </div>
         <Link to="/health-check">
@@ -86,8 +86,23 @@ function HistoryPage() {
         </Link>
       </header>
 
-      {!loaded ? (
+      {!loaded || loading ? (
         <p className="mt-12 text-center text-muted-foreground">Loading…</p>
+      ) : !user ? (
+        <div className="mt-12 rounded-3xl border border-border bg-card p-10 text-center shadow-card">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+            <HistoryIcon className="size-7" />
+          </span>
+          <h2 className="mt-5 text-lg font-bold text-foreground">Log in to view your history</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Saved assessments are stored with your account. Log in or create an account to see them.
+          </p>
+          <Link to="/login" className="mt-6 inline-block">
+            <Button>Log In</Button>
+          </Link>
+        </div>
+      ) : error ? (
+        <p className="mt-12 text-center text-sm text-emergency-foreground">{error}</p>
       ) : items.length === 0 ? (
         <div className="mt-12 rounded-3xl border border-border bg-card p-10 text-center shadow-card">
           <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">

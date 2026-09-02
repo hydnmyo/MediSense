@@ -49,6 +49,8 @@ function ResultsPage() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     setAssessment(getCurrentAssessment());
@@ -82,9 +84,17 @@ function ResultsPage() {
 
   const severe = assessment.input.severity === "Severe";
 
-  const handleSave = () => {
-    saveAssessment(assessment);
-    setSaved(true);
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      await saveAssessment(assessment);
+      setSaved(true);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : "Could not save assessment.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -264,9 +274,9 @@ function ResultsPage() {
 
       {/* Actions + disclaimer */}
       <div className="mt-8 flex flex-wrap items-center gap-3">
-        <Button size="lg" onClick={handleSave} disabled={saved}>
+        <Button size="lg" onClick={handleSave} disabled={saved || saving}>
           <Save className="size-4" />
-          {saved ? "Saved to History" : "Save Assessment"}
+          {saved ? "Saved to History" : saving ? "Saving…" : "Save Assessment"}
         </Button>
         {saved && (
           <Button variant="outline" size="lg" onClick={() => navigate({ to: "/history" })}>
@@ -277,6 +287,10 @@ function ResultsPage() {
           New Check
         </Button>
       </div>
+
+      {saveError && (
+        <p className="mt-4 text-sm font-medium text-emergency-foreground">{saveError}</p>
+      )}
 
       <div className="mt-8 flex items-start gap-3 rounded-2xl border border-border bg-muted/60 p-5">
         <Info className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />

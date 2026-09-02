@@ -1,34 +1,39 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Activity, LogOut, Menu, X } from "lucide-react";
+import { Activity, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { logOut, useUser } from "@/lib/auth";
 import { Button } from "@/components/Button";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
+import { useLanguage } from "@/lib/language";
 
 const NAV_LINKS = [
-  { to: "/", label: "Home" },
-  { to: "/about", label: "About" },
-  { to: "/health-check", label: "Health Check" },
-  { to: "/history", label: "History" },
+  { to: "/", label: "home" },
+  { to: "/about", label: "about" },
+  { to: "/health-check", label: "healthCheck" },
+  { to: "/history", label: "history" },
 ] as const;
 
 export function Navbar() {
   const user = useUser();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => setOpen(false), [pathname]);
 
-  const handleLogout = () => {
-    logOut();
+  const handleLogout = async () => {
+    await logOut();
     navigate({ to: "/" });
   };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="MediSense home">
+        <Link to="/" className="flex items-center gap-2.5" aria-label={`MediSense ${t("home")}`}>
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-card">
             <Activity className="size-5" strokeWidth={2.5} />
           </span>
@@ -47,12 +52,14 @@ export function Navbar() {
                 pathname === link.to && "bg-secondary font-semibold text-secondary-foreground",
               )}
             >
-              {link.label}
+              {t(link.label)}
             </Link>
           ))}
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          <LanguageSwitcher />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           {user ? (
             <>
               <span className="mr-1 flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground">
@@ -63,16 +70,16 @@ export function Navbar() {
               </span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="size-4" />
-                Logout
+                {t("logOut")}
               </Button>
             </>
           ) : (
             <>
               <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/login" })}>
-                Log In
+                {t("logIn")}
               </Button>
               <Button size="sm" onClick={() => navigate({ to: "/signup" })}>
-                Sign Up
+                {t("signUp")}
               </Button>
             </>
           )}
@@ -81,7 +88,7 @@ export function Navbar() {
         <button
           className="flex size-10 items-center justify-center rounded-xl text-foreground hover:bg-muted md:hidden cursor-pointer"
           onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Close menu" : "Open menu"}
+          aria-label={open ? t("closeMenu") : t("openMenu")}
           aria-expanded={open}
         >
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -100,17 +107,19 @@ export function Navbar() {
                   pathname === link.to && "bg-secondary font-semibold text-secondary-foreground",
                 )}
               >
-                {link.label}
+                {t(link.label)}
               </Link>
             ))}
           </div>
           <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3">
+            <LanguageSwitcher className="shrink-0" />
+            <ThemeToggle theme={theme} onToggle={toggleTheme} className="shrink-0" />
             {user ? (
               <>
                 <span className="flex-1 text-sm font-semibold text-foreground">{user.name}</span>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="size-4" />
-                  Logout
+                {t("logOut")}
                 </Button>
               </>
             ) : (
@@ -121,10 +130,10 @@ export function Navbar() {
                   className="flex-1"
                   onClick={() => navigate({ to: "/login" })}
                 >
-                  Log In
+                  {t("logIn")}
                 </Button>
                 <Button size="sm" className="flex-1" onClick={() => navigate({ to: "/signup" })}>
-                  Sign Up
+                  {t("signUp")}
                 </Button>
               </>
             )}
@@ -132,5 +141,33 @@ export function Navbar() {
         </div>
       )}
     </header>
+  );
+}
+
+function ThemeToggle({
+  theme,
+  onToggle,
+  className,
+}: {
+  theme: "light" | "dark";
+  onToggle: () => void;
+  className?: string;
+}) {
+  const isDark = theme === "dark";
+  const { t } = useLanguage();
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "flex size-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-card transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring cursor-pointer",
+        className,
+      )}
+      aria-label={isDark ? t("switchToLight") : t("switchToDark")}
+      title={isDark ? t("switchToLight") : t("switchToDark")}
+    >
+      {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </button>
   );
 }

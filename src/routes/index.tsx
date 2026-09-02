@@ -8,7 +8,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { Button } from "@/components/Button";
-import { DISCLAIMER } from "@/lib/knowledge";
+import { useLanguage } from "@/lib/language";
 import heroImage from "@/assets/hero.png";
 
 export const Route = createFileRoute("/")({
@@ -34,29 +34,31 @@ export const Route = createFileRoute("/")({
 const FEATURES = [
   {
     icon: ClipboardList,
-    title: "Symptom Analysis",
-    text: "Enter the symptoms you are currently experiencing.",
+    title: "symptomAnalysis",
+    text: "symptomAnalysisText",
   },
   {
     icon: Stethoscope,
-    title: "Possible Conditions",
-    text: "Explore health conditions that may match your symptoms.",
+    title: "possibleConditions",
+    text: "possibleConditionsText",
   },
   {
     icon: HeartPulse,
-    title: "Health Guidance",
-    text: "Receive basic suggestions and warning signs to consider.",
+    title: "healthGuidance",
+    text: "healthGuidanceText",
   },
 ];
 
 const STEPS = [
-  { n: "01", label: "Enter Symptoms" },
-  { n: "02", label: "Analyze" },
-  { n: "03", label: "See Possible Conditions" },
-  { n: "04", label: "Get Suggestions" },
+  { n: "01", label: "enterSymptoms" },
+  { n: "02", label: "analyze" },
+  { n: "03", label: "seePossibleConditions" },
+  { n: "04", label: "getSuggestions" },
 ];
 
 function HomePage() {
+  const { t } = useLanguage();
+
   return (
     <div>
       {/* Hero */}
@@ -64,26 +66,24 @@ function HomePage() {
         <div className="animate-fade-up">
           <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
             <HeartPulse className="size-3.5" />
-            AI Health Reasoning Assistant
+            {t("aiAssistant")}
           </span>
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] text-foreground sm:text-5xl lg:text-6xl">
-            Understand Your Symptoms.{" "}
-            <span className="text-primary">Get Informed.</span>
+            {t("heroTitle")}
           </h1>
           <p className="mt-5 max-w-md text-lg leading-relaxed text-muted-foreground">
-            Enter your symptoms and explore possible health conditions with clear
-            explanations and basic health guidance.
+            {t("heroDescription")}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link to="/health-check">
               <Button size="lg">
-                Check My Symptoms
+                {t("checkMySymptoms")}
                 <ArrowRight className="size-4" />
               </Button>
             </Link>
             <Link to="/about">
               <Button variant="outline" size="lg">
-                Learn More
+                {t("learnMore")}
               </Button>
             </Link>
           </div>
@@ -92,7 +92,7 @@ function HomePage() {
           <div className="overflow-hidden rounded-4xl border border-border bg-secondary shadow-card">
             <img
               src={heroImage}
-              alt="Abstract illustration of a medical cross connected to AI network nodes"
+              alt={t("heroImageAlt")}
               width={1024}
               height={1024}
               className="aspect-square w-full object-cover"
@@ -105,7 +105,7 @@ function HomePage() {
       <section className="border-y border-border/70 bg-card">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
-            What MediSense Helps You Do
+            {t("whatMediSenseHelps")}
           </h2>
           <div className="mt-10 grid gap-5 sm:grid-cols-3">
             {FEATURES.map((f, i) => (
@@ -117,8 +117,8 @@ function HomePage() {
                 <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
                   <f.icon className="size-6" />
                 </span>
-                <h3 className="mt-5 text-lg font-bold text-foreground">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.text}</p>
+                <h3 className="mt-5 text-lg font-bold text-foreground">{t(f.title)}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(f.text)}</p>
               </article>
             ))}
           </div>
@@ -128,7 +128,7 @@ function HomePage() {
       {/* How it works */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-center text-2xl font-bold text-foreground sm:text-3xl">
-          How It Works
+          {t("howItWorks")}
         </h2>
         <ol className="mx-auto mt-10 flex max-w-4xl flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:gap-0">
           {STEPS.map((step, i) => (
@@ -137,7 +137,7 @@ function HomePage() {
                 <span className="flex size-14 items-center justify-center rounded-2xl bg-primary font-heading text-lg font-extrabold text-primary-foreground shadow-card">
                   {step.n}
                 </span>
-                <p className="mt-3 max-w-36 text-sm font-semibold text-foreground">{step.label}</p>
+                <p className="mt-3 max-w-36 text-sm font-semibold text-foreground">{t(step.label)}</p>
               </div>
               {i < STEPS.length - 1 && (
                 <>
@@ -154,7 +154,7 @@ function HomePage() {
         <div className="mt-12 text-center">
           <Link to="/health-check">
             <Button size="lg">
-              Start a Health Check
+              {t("startHealthCheck")}
               <ArrowRight className="size-4" />
             </Button>
           </Link>
@@ -165,7 +165,7 @@ function HomePage() {
       <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <div className="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning-soft p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-warning-foreground" aria-hidden />
-          <p className="text-sm leading-relaxed text-warning-foreground">{DISCLAIMER}</p>
+          <p className="text-sm leading-relaxed text-warning-foreground">{t("disclaimer")}</p>
         </div>
       </section>
     </div>

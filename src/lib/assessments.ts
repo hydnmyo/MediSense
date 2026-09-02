@@ -6,11 +6,7 @@ import {
   type ConditionResult,
 } from "./knowledge";
 import { getCurrentUser } from "./auth";
-
-/*
- * Browser-local assessment storage for the prototype.
- * History is kept per signed-in email (or a guest bucket when logged out).
- */
+import { requireSupabaseConfig, supabase } from "./supabase";
 
 export interface SavedCondition {
   conditionId: string;
@@ -29,12 +25,16 @@ export interface Assessment {
   results: SavedCondition[];
   suggestions: string[];
   warnings: string[];
-  demo?: boolean;
 }
 
-function historyKey(): string {
-  const user = getCurrentUser();
-  return `medisense:history:${user ? user.email : "guest"}`;
+interface AssessmentRow {
+  id: string;
+  user_id: string;
+  created_at: string;
+  input: AssessmentInput;
+  results: SavedCondition[];
+  suggestions: string[];
+  warnings: string[];
 }
 
 export function buildAssessment(input: AssessmentInput): Assessment {
@@ -77,105 +77,60 @@ export function getCurrentAssessment(): Assessment | null {
   }
 }
 
-export function listAssessments(): Assessment[] {
-  try {
-    const raw = localStorage.getItem(historyKey());
-    const items: Assessment[] = raw ? JSON.parse(raw) : [];
-    return items.sort((a, b) => b.date.localeCompare(a.date));
-  } catch {
-    return [];
-  }
-}
+function rowToAssessment(row: Partial<AssessmentRow>): Assessment {
+  const input = row.input ?? {
+    symptoms: [],
+    duration: "Less than 1 day",
+    severity: "Mild",
+    rainySeason: "Not sure",
+  };
 
-export function saveAssessment(a: Assessment) {
-  const items = listAssessments();
-  if (items.some((x) => x.id === a.id)) return;
-  localStorage.setItem(historyKey(), JSON.stringify([a, ...items]));
-  window.dispatchEvent(new Event("medisense-history"));
-}
-
-/* ---------- Demo data (seeded once per history bucket) ---------- */
-
-function demoEntry(
-  id: string,
-  date: string,
-  input: AssessmentInput,
-  results: Array<[conditionId: string, name: string, score: number, matched: string[]]>,
-): Assessment {
-  const levelOf = (s: number) => (s >= 65 ? "High" : s >= 40 ? "Moderate" : "Low");
   return {
-    id,
-    date,
+    id: row.id ?? `assessment-${row.created_at ?? Date.now()}`,
+    date: row.created_at ?? new Date().toISOString(),
     input,
-    demo: true,
-    results: results.map(([conditionId, name, score, matched]) => ({
-      conditionId,
-      name,
-      score,
-      level: levelOf(score),
-      matchedSymptoms: matched,
-      why: "Several of your reported symptoms match patterns associated with this condition.",
-      suggestions: [],
-    })),
-    suggestions: [],
-    warnings: WARNING_SIGNS,
+    results: Array.isArray(row.results) ? row.results : [],
+    suggestions: Array.isArray(row.suggestions) ? row.suggestions : [],
+    warnings: Array.isArray(row.warnings) ? row.warnings : [],
   };
 }
 
-const DEMO_ASSESSMENTS: Assessment[] = [
-  demoEntry(
-    "demo_1",
-    "2026-08-22T09:30:00.000Z",
-    {
-      symptoms: ["fever", "headache", "body_aches", "fatigue"],
-      duration: "1–3 days",
-      severity: "Moderate",
-      rainySeason: "Yes",
-    },
-    [
-      ["dengue", "Dengue", 72, ["fever", "headache", "body_aches", "fatigue"]],
-      ["flu", "Flu / Influenza", 58, ["fever", "headache", "fatigue", "body_aches"]],
-      ["chikungunya", "Chikungunya", 43, ["fever", "headache", "fatigue"]],
-    ],
-  ),
-  demoEntry(
-    "demo_2",
-    "2026-08-15T14:10:00.000Z",
-    {
-      symptoms: ["cough", "sore_throat", "runny_nose", "fatigue"],
-      duration: "1–3 days",
-      severity: "Mild",
-      rainySeason: "Not sure",
-    },
-    [
-      ["flu", "Flu / Influenza", 78, ["cough", "sore_throat", "fatigue", "runny_nose"]],
-      ["respiratory_infection", "Respiratory Infection", 69, ["cough", "sore_throat", "fatigue"]],
-      ["common_cold", "Common Cold", 63, ["runny_nose", "sore_throat", "cough", "fatigue"]],
-    ],
-  ),
-  demoEntry(
-    "demo_3",
-    "2026-08-03T18:45:00.000Z",
-    {
-      symptoms: ["diarrhea", "vomiting", "abdominal_pain", "weakness"],
-      duration: "Less than 1 day",
-      severity: "Moderate",
-      rainySeason: "No",
-    },
-    [
-      ["food_poisoning", "Food Poisoning", 81, ["vomiting", "diarrhea", "abdominal_pain", "weakness"]],
-      ["acute_diarrheal", "Acute Diarrheal / Water-borne Illness", 73, ["diarrhea", "vomiting", "abdominal_pain", "weakness"]],
-    ],
-  ),
-];
+export async function listAssessments(): Promise<Assessment[]> {
+  requireSupabaseConfig();
+  const user = await getCurrentUser();
+  if (!user) return [];
 
-export function seedDemoAssessments() {
-  const key = historyKey();
-  const seededFlag = `${key}:seeded`;
-  if (localStorage.getItem(seededFlag)) return;
-  const existing = listAssessments();
-  localStorage.setItem(key, JSON.stringify([...existing, ...DEMO_ASSESSMENTS]));
-  localStorage.setItem(seededFlag, "1");
+  const { data, error } = await supabase
+    .from("assessments")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Partial<AssessmentRow>[]).map(rowToAssessment);
+}
+
+export async function saveAssessment(a: Assessment): Promise<Assessment> {
+  requireSupabaseConfig();
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("Please log in to save assessments.");
+  }
+
+  const { data, error } = await supabase
+    .from("assessments")
+    .insert({
+      user_id: user.id,
+      input: a.input,
+      results: a.results,
+      suggestions: a.suggestions,
+      warnings: a.warnings,
+    })
+    .select("id,user_id,created_at,input,results,suggestions,warnings")
+    .single();
+
+  if (error) throw new Error(error.message);
+  return rowToAssessment(data as AssessmentRow);
 }
 
 export function formatDate(iso: string): string {

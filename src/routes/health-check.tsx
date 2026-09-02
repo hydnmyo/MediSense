@@ -7,6 +7,7 @@ import {
   RAINY_OPTIONS,
   SEVERITY_OPTIONS,
   SYMPTOM_CATEGORIES,
+  SYMPTOM_CATEGORY_TRANSLATIONS,
   SYMPTOMS,
   type AssessmentInput,
   type Duration,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/knowledge";
 import { buildAssessment, setCurrentAssessment } from "@/lib/assessments";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/language";
 
 export const Route = createFileRoute("/health-check")({
   head: () => ({
@@ -38,6 +40,22 @@ export const Route = createFileRoute("/health-check")({
 
 function HealthCheckPage() {
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
+  const optionLabel = (value: string) => {
+    if (language === "en") return value;
+    return {
+      "Less than 1 day": "၁ ရက်အောက်",
+      "1–3 days": "၁–၃ ရက်",
+      "4–7 days": "၄–၇ ရက်",
+      "More than 7 days": "၇ ရက်အထက်",
+      Mild: "အနည်းငယ်",
+      Moderate: "အလယ်အလတ်",
+      Severe: "ပြင်းထန်",
+      Yes: "ဟုတ်သည်",
+      No: "မဟုတ်ပါ",
+      "Not sure": "မသေချာပါ",
+    }[value] ?? value;
+  };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [duration, setDuration] = useState<Duration | "">("");
   const [severity, setSeverity] = useState<Severity | "">("");
@@ -64,11 +82,11 @@ function HealthCheckPage() {
 
   const submit = () => {
     if (selected.size === 0) {
-      setError("Please select at least one symptom.");
+      setError(t("selectSymptomError"));
       return;
     }
     if (!duration || !severity || !rainySeason) {
-      setError("Please answer the duration, severity, and rainy-season questions.");
+      setError(t("answerQuestionsError"));
       return;
     }
     const input: AssessmentInput = {
@@ -86,23 +104,22 @@ function HealthCheckPage() {
       <header className="animate-fade-up">
         <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
           <ClipboardList className="size-3.5" />
-          Health Check
+          {t("healthCheckBadge")}
         </span>
         <h1 className="mt-5 text-3xl font-extrabold text-foreground sm:text-4xl">
-          Tell us what you're feeling
+          {t("healthCheckTitle")}
         </h1>
         <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          Select every symptom that applies, then answer three quick questions.
-          MediSense will show possible conditions with symptom-match scores.
+          {t("healthCheckDescription")}
         </p>
       </header>
 
       {/* Symptoms */}
       <section className="mt-10 animate-fade-up" style={{ animationDelay: "80ms" }}>
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-bold text-foreground">Your symptoms</h2>
+          <h2 className="text-lg font-bold text-foreground">{t("yourSymptoms")}</h2>
           <span className="text-sm font-medium text-muted-foreground">
-            {selected.size} selected
+            {t("selected", { count: selected.size })}
           </span>
         </div>
         <div className="mt-5 space-y-6">
@@ -115,7 +132,7 @@ function HealthCheckPage() {
                 className="rounded-3xl border border-border bg-card p-5 shadow-card sm:p-6"
               >
                 <legend className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {category}
+                  {language === "mm" ? (SYMPTOM_CATEGORY_TRANSLATIONS[category] ?? category) : category}
                 </legend>
                 <div className="flex flex-wrap gap-2">
                   {items.map((symptom) => {
@@ -133,7 +150,7 @@ function HealthCheckPage() {
                             : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary-soft",
                         )}
                       >
-                        {symptom.label}
+                        {language === "mm" ? (symptom.name_mm ?? symptom.label) : symptom.label}
                       </button>
                     );
                   })}
@@ -146,15 +163,15 @@ function HealthCheckPage() {
 
       {/* Context questions */}
       <section
-        className="mt-8 grid gap-5 rounded-3xl border border-border bg-card p-6 shadow-card animate-fade-up sm:grid-cols-3 sm:p-8"
+        className="mt-8 grid gap-5 rounded-3xl border border-border bg-card p-6 shadow-card animate-fade-up sm:items-start sm:grid-cols-3 sm:p-8"
         style={{ animationDelay: "160ms" }}
       >
-        <div>
+        <div className="flex flex-col gap-2">
           <label
             htmlFor="duration"
-            className="text-sm font-semibold text-foreground"
+            className="min-h-10 text-sm font-semibold leading-5 text-foreground"
           >
-            How long have you had these symptoms?
+            {t("durationQuestion")}
           </label>
           <select
             id="duration"
@@ -163,19 +180,19 @@ function HealthCheckPage() {
               setDuration(e.target.value as Duration);
               setError("");
             }}
-            className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-2 focus:outline-ring"
+            className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-2 focus:outline-ring"
           >
-            <option value="">Select…</option>
+            <option value="">{t("select")}</option>
             {DURATION_OPTIONS.map((d) => (
               <option key={d} value={d}>
-                {d}
+                {optionLabel(d)}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="severity" className="text-sm font-semibold text-foreground">
-            Overall severity
+        <div className="flex flex-col gap-2">
+          <label htmlFor="severity" className="min-h-10 text-sm font-semibold leading-5 text-foreground">
+            {t("severityQuestion")}
           </label>
           <select
             id="severity"
@@ -184,19 +201,19 @@ function HealthCheckPage() {
               setSeverity(e.target.value as Severity);
               setError("");
             }}
-            className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-2 focus:outline-ring"
+            className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-2 focus:outline-ring"
           >
-            <option value="">Select…</option>
+            <option value="">{t("select")}</option>
             {SEVERITY_OPTIONS.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {optionLabel(s)}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="rainy" className="text-sm font-semibold text-foreground">
-            Is it currently the rainy season where you live?
+        <div className="flex flex-col gap-2">
+          <label htmlFor="rainy" className="min-h-10 text-sm font-semibold leading-5 text-foreground">
+            {t("rainyQuestion")}
           </label>
           <select
             id="rainy"
@@ -205,12 +222,12 @@ function HealthCheckPage() {
               setRainySeason(e.target.value as RainySeason);
               setError("");
             }}
-            className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-2 focus:outline-ring"
+            className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-2 focus:outline-ring"
           >
-            <option value="">Select…</option>
+            <option value="">{t("select")}</option>
             {RAINY_OPTIONS.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {optionLabel(r)}
               </option>
             ))}
           </select>
@@ -225,12 +242,12 @@ function HealthCheckPage() {
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Button size="lg" onClick={submit}>
-          Analyze My Symptoms
+          {t("analyzeMySymptoms")}
           <ArrowRight className="size-4" />
         </Button>
         <Button variant="ghost" size="lg" onClick={reset}>
           <RotateCcw className="size-4" />
-          Reset
+          {t("reset")}
         </Button>
       </div>
     </div>

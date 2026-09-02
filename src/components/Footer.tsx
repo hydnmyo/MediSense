@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Activity } from "lucide-react";
-import { DISCLAIMER } from "@/lib/knowledge";
+import { useLanguage } from "@/lib/language";
 
 export function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer className="border-t border-border/70 bg-card">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -16,25 +18,23 @@ export function Footer() {
                 Medi<span className="text-primary">Sense</span>
               </span>
             </div>
-            <p className="mt-3 text-sm font-medium text-foreground">
-              Understand Your Symptoms. Get Informed.
-            </p>
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{DISCLAIMER}</p>
+            <p className="mt-3 text-sm font-medium text-foreground">{t("tagline")}</p>
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t("disclaimer")}</p>
           </div>
-          <nav aria-label="Footer">
+          <nav aria-label={t("footer")}>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Pages
+              {t("pages")}
             </p>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><Link to="/" className="text-foreground/80 hover:text-primary">Home</Link></li>
-              <li><Link to="/about" className="text-foreground/80 hover:text-primary">About</Link></li>
-              <li><Link to="/health-check" className="text-foreground/80 hover:text-primary">Health Check</Link></li>
-              <li><Link to="/history" className="text-foreground/80 hover:text-primary">History</Link></li>
+              <li><Link to="/" className="text-foreground/80 hover:text-primary">{t("home")}</Link></li>
+              <li><Link to="/about" className="text-foreground/80 hover:text-primary">{t("about")}</Link></li>
+              <li><Link to="/health-check" className="text-foreground/80 hover:text-primary">{t("healthCheck")}</Link></li>
+              <li><Link to="/history" className="text-foreground/80 hover:text-primary">{t("history")}</Link></li>
             </ul>
           </nav>
         </div>
         <p className="mt-8 border-t border-border/70 pt-5 text-xs text-muted-foreground">
-          MediSense — an undergraduate Artificial Intelligence course project.
+          {t("courseProject")}
         </p>
       </div>
     </footer>

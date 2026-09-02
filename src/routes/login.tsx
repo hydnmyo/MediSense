@@ -3,6 +3,7 @@ import { Activity, LogIn } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/Button";
 import { logIn } from "@/lib/auth";
+import { useLanguage } from "@/lib/language";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -24,13 +25,17 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const result = logIn(email.trim(), password);
+    setBusy(true);
+    const result = await logIn(email.trim(), password);
+    setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -44,17 +49,15 @@ function LoginPage() {
         <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-card">
           <Activity className="size-6" strokeWidth={2.5} />
         </span>
-        <h1 className="mt-5 text-center text-2xl font-extrabold text-foreground">
-          Welcome back
-        </h1>
+        <h1 className="mt-5 text-center text-2xl font-extrabold text-foreground">{t("welcomeBack")}</h1>
         <p className="mt-2 text-center text-sm text-muted-foreground">
-          Log in to save and review your health checks.
+          {t("loginDescription")}
         </p>
 
         <form onSubmit={submit} className="mt-7 space-y-4">
           <div>
             <label htmlFor="email" className="text-sm font-semibold text-foreground">
-              Email
+              {t("email")}
             </label>
             <input
               id="email"
@@ -72,7 +75,7 @@ function LoginPage() {
           </div>
           <div>
             <label htmlFor="password" className="text-sm font-semibold text-foreground">
-              Password
+              {t("password")}
             </label>
             <input
               id="password"
@@ -95,16 +98,16 @@ function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             <LogIn className="size-4" />
-            Log In
+            {busy ? t("loggingIn") : t("logIn")}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          New to MediSense?{" "}
+          {t("newToMediSense")} {" "}
           <Link to="/signup" className="font-semibold text-primary hover:underline">
-            Create an account
+            {t("createAccount")}
           </Link>
         </p>
       </div>

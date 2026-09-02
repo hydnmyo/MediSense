@@ -3,6 +3,7 @@ import { Activity, UserPlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/Button";
 import { signUp } from "@/lib/auth";
+import { useLanguage } from "@/lib/language";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -26,18 +27,22 @@ export const Route = createFileRoute("/signup")({
 
 function SignupPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t("passwordLength"));
       return;
     }
-    const result = signUp(name.trim(), email.trim(), password);
+    setBusy(true);
+    const result = await signUp(name.trim(), email.trim(), password);
+    setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -52,16 +57,16 @@ function SignupPage() {
           <Activity className="size-6" strokeWidth={2.5} />
         </span>
         <h1 className="mt-5 text-center text-2xl font-extrabold text-foreground">
-          Create your account
+          {t("createYourAccount")}
         </h1>
         <p className="mt-2 text-center text-sm text-muted-foreground">
-          Save your health checks and track them over time.
+          {t("signupDescription")}
         </p>
 
         <form onSubmit={submit} className="mt-7 space-y-4">
           <div>
             <label htmlFor="name" className="text-sm font-semibold text-foreground">
-              Full name
+              {t("fullName")}
             </label>
             <input
               id="name"
@@ -76,7 +81,7 @@ function SignupPage() {
           </div>
           <div>
             <label htmlFor="email" className="text-sm font-semibold text-foreground">
-              Email
+              {t("email")}
             </label>
             <input
               id="email"
@@ -94,7 +99,7 @@ function SignupPage() {
           </div>
           <div>
             <label htmlFor="password" className="text-sm font-semibold text-foreground">
-              Password
+              {t("password")}
             </label>
             <input
               id="password"
@@ -107,7 +112,7 @@ function SignupPage() {
                 setError("");
               }}
               className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground focus:outline-2 focus:outline-ring"
-              placeholder="At least 6 characters"
+              placeholder={t("passwordPlaceholder")}
             />
           </div>
 
@@ -117,16 +122,16 @@ function SignupPage() {
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full">
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             <UserPlus className="size-4" />
-            Sign Up
+            {busy ? t("creatingAccount") : t("signUp")}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("alreadyHaveAccount")} {" "}
           <Link to="/login" className="font-semibold text-primary hover:underline">
-            Log in
+            {t("logIn")}
           </Link>
         </p>
       </div>

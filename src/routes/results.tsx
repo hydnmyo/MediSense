@@ -10,13 +10,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
-import {
-  getCurrentAssessment,
-  saveAssessment,
-  type Assessment,
-} from "@/lib/assessments";
-import { DISCLAIMER, symptomLabel, type MatchLevel } from "@/lib/knowledge";
+import { getCurrentAssessment, saveAssessment, type Assessment } from "@/lib/assessments";
+import { useAuth } from "@/lib/auth";
+import { CONDITIONS, WARNING_TRANSLATIONS, symptomLabel, type MatchLevel } from "@/lib/knowledge";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/language";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
@@ -46,9 +44,13 @@ const LEVEL_STYLES: Record<MatchLevel, string> = {
 
 function ResultsPage() {
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
+  const { user, loading: authLoading } = useAuth();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     setAssessment(getCurrentAssessment());
@@ -58,7 +60,7 @@ function ResultsPage() {
   if (!loaded) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-24 sm:px-6">
-        <p className="text-center text-muted-foreground">Loading your results…</p>
+        <p className="text-center text-muted-foreground">{t("loadingResults")}</p>
       </div>
     );
   }
@@ -69,22 +71,58 @@ function ResultsPage() {
         <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
           <Stethoscope className="size-7" />
         </span>
-        <h1 className="mt-6 text-2xl font-bold text-foreground">No assessment yet</h1>
+        <h1 className="mt-6 text-2xl font-bold text-foreground">{t("noAssessment")}</h1>
         <p className="mt-3 text-muted-foreground">
-          Start a health check first — your possible conditions will appear here.
+          {t("noAssessmentText")}
         </p>
         <Link to="/health-check" className="mt-8 inline-block">
-          <Button size="lg">Start a Health Check</Button>
+          <Button size="lg">{t("startHealthCheck")}</Button>
         </Link>
       </div>
     );
   }
 
   const severe = assessment.input.severity === "Severe";
+  const severityLabel = t(
+    assessment.input.severity === "Mild"
+      ? "severityMild"
+      : assessment.input.severity === "Moderate"
+        ? "severityModerate"
+        : "severitySevere",
+  );
+  const levelLabel = (level: string) =>
+    t(level === "High" ? "levelHigh" : level === "Moderate" ? "levelModerate" : "levelLow");
+  const localizedSuggestions = assessment.results.slice(0, 2).flatMap((result) => {
+    const condition = CONDITIONS.find((item) => item.id === result.conditionId);
+    return language === "mm"
+      ? (condition?.recommendations_mm ?? result.suggestions)
+      : (condition?.suggestions ?? result.suggestions);
+  });
 
-  const handleSave = () => {
-    saveAssessment(assessment);
-    setSaved(true);
+  const handleSave = async () => {
+    if (saving || saved) return;
+    setSaveError("");
+
+    if (authLoading) {
+      setSaveError(t("checkingLogin"));
+      return;
+    }
+
+    if (!user) {
+      setSaveError(t("loginToSave"));
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const savedAssessment = await saveAssessment(assessment);
+      setAssessment(savedAssessment);
+      setSaved(true);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : t("cannotSave"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -95,16 +133,18 @@ function ResultsPage() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="size-4" />
-          Edit my symptoms
+          {t("editSymptoms")}
         </Link>
         <h1 className="mt-4 text-3xl font-extrabold text-foreground sm:text-4xl">
-          Possible Conditions
+          {t("possibleConditions")}
         </h1>
         <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
-          Based on {assessment.input.symptoms.length} reported symptom
-          {assessment.input.symptoms.length === 1 ? "" : "s"} over{" "}
-          {assessment.input.duration.toLowerCase()} ({assessment.input.severity.toLowerCase()}{" "}
-          severity). Ranked by symptom-match score.
+          {t("basedOnSymptoms", {
+            count: assessment.input.symptoms.length,
+            symptom: assessment.input.symptoms.length === 1 ? t("symptom") : t("symptoms"),
+            duration: assessment.input.duration,
+            severity: severityLabel,
+          })}
         </p>
       </header>
 
@@ -112,9 +152,7 @@ function ResultsPage() {
       <section
         className={cn(
           "mt-8 rounded-3xl border p-6 animate-fade-up sm:p-7",
-          severe
-            ? "border-emergency/40 bg-emergency-soft"
-            : "border-warning/30 bg-warning-soft",
+          severe ? "border-emergency/40 bg-emergency-soft" : "border-warning/30 bg-warning-soft",
         )}
         style={{ animationDelay: "60ms" }}
       >
@@ -134,13 +172,12 @@ function ResultsPage() {
               )}
             >
               {severe
-                ? "You reported severe symptoms — please read this first"
-                : "Seek medical care immediately if you experience"}
+                ? (language === "mm" ? t("emergencyWarningTitle") : t("severeWarning"))
+                : t("emergencyWarningTitle")}
             </h2>
             {severe && (
               <p className="mt-1 text-sm font-medium text-emergency-foreground">
-                Because your symptoms are severe, consider contacting a healthcare
-                professional promptly rather than waiting.
+                {t("severeWarningText")}
               </p>
             )}
             <ul className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
@@ -159,7 +196,7 @@ function ResultsPage() {
                     )}
                     aria-hidden
                   />
-                  {w}
+                  {language === "mm" ? (WARNING_TRANSLATIONS[w] ?? w) : w}
                 </li>
               ))}
             </ul>
@@ -172,9 +209,7 @@ function ResultsPage() {
         {assessment.results.length === 0 && (
           <div className="rounded-3xl border border-border bg-card p-8 text-center shadow-card">
             <p className="text-muted-foreground">
-              No condition in our prototype knowledge base matched these symptoms
-              strongly enough. Try adding more symptoms, or consult a professional
-              if you feel unwell.
+              {t("noResults")}
             </p>
           </div>
         )}
@@ -190,7 +225,11 @@ function ResultsPage() {
                   <span className="flex size-8 items-center justify-center rounded-lg bg-secondary font-heading text-sm font-extrabold text-secondary-foreground">
                     {i + 1}
                   </span>
-                  <h2 className="text-xl font-bold text-foreground">{r.name}</h2>
+                  <h2 className="text-xl font-bold text-foreground">
+                    {language === "mm"
+                      ? (CONDITIONS.find((item) => item.id === r.conditionId)?.title_mm ?? r.name)
+                      : r.name}
+                  </h2>
                 </div>
                 <span
                   className={cn(
@@ -198,16 +237,12 @@ function ResultsPage() {
                     LEVEL_STYLES[r.level as MatchLevel] ?? LEVEL_STYLES.Low,
                   )}
                 >
-                  {r.level} match
+                  {t("match", { level: levelLabel(r.level) })}
                 </span>
               </div>
               <div className="text-right">
-                <p className="font-heading text-3xl font-extrabold text-primary">
-                  {r.score}%
-                </p>
-                <p className="text-xs font-medium text-muted-foreground">
-                  symptom match
-                </p>
+                <p className="font-heading text-3xl font-extrabold text-primary">{r.score}%</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("symptomMatch")}</p>
               </div>
             </div>
 
@@ -217,7 +252,12 @@ function ResultsPage() {
               aria-valuenow={r.score}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${r.name} symptom-match score ${r.score} percent`}
+              aria-label={t("scoreAria", {
+                name: language === "mm"
+                  ? (CONDITIONS.find((item) => item.id === r.conditionId)?.title_mm ?? r.name)
+                  : r.name,
+                score: r.score,
+              })}
             >
               <div
                 className="h-full rounded-full bg-primary transition-all"
@@ -225,7 +265,14 @@ function ResultsPage() {
               />
             </div>
 
-            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{r.why}</p>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              {(() => {
+                const condition = CONDITIONS.find((item) => item.id === r.conditionId);
+                return language === "mm"
+                  ? (condition?.description_mm ?? r.why)
+                  : (condition?.description_en ?? r.why);
+              })()}
+            </p>
 
             <div className="mt-3 flex flex-wrap gap-1.5">
               {r.matchedSymptoms.map((id) => (
@@ -233,7 +280,7 @@ function ResultsPage() {
                   key={id}
                   className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground"
                 >
-                  {symptomLabel(id)}
+                  {symptomLabel(id, language)}
                 </span>
               ))}
             </div>
@@ -242,17 +289,17 @@ function ResultsPage() {
       </section>
 
       {/* Suggestions */}
-      {assessment.suggestions.length > 0 && (
+      {localizedSuggestions.length > 0 && (
         <section
           className="mt-8 rounded-3xl border border-border bg-card p-6 shadow-card animate-fade-up sm:p-8"
           style={{ animationDelay: "200ms" }}
         >
           <div className="flex items-center gap-2.5">
             <HeartPulse className="size-5 text-primary" aria-hidden />
-            <h2 className="text-lg font-bold text-foreground">What You Can Do</h2>
+            <h2 className="text-lg font-bold text-foreground">{t("whatYouCanDo")}</h2>
           </div>
           <ul className="mt-4 space-y-2.5">
-            {assessment.suggestions.map((s) => (
+            {localizedSuggestions.map((s) => (
               <li key={s} className="flex gap-2.5 text-sm leading-relaxed text-foreground">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                 {s}
@@ -264,23 +311,28 @@ function ResultsPage() {
 
       {/* Actions + disclaimer */}
       <div className="mt-8 flex flex-wrap items-center gap-3">
-        <Button size="lg" onClick={handleSave} disabled={saved}>
+        <Button size="lg" onClick={handleSave} disabled={saved || saving}>
           <Save className="size-4" />
-          {saved ? "Saved to History" : "Save Assessment"}
+          {saving ? t("saving") : saved ? t("savedToHistory") : t("saveAssessment")}
         </Button>
         {saved && (
           <Button variant="outline" size="lg" onClick={() => navigate({ to: "/history" })}>
-            View History
+            {t("viewHistory")}
           </Button>
         )}
         <Button variant="ghost" size="lg" onClick={() => navigate({ to: "/health-check" })}>
-          New Check
+          {t("newCheck")}
         </Button>
       </div>
+      {saveError && (
+        <p role="alert" className="mt-3 text-sm font-medium text-destructive">
+          {saveError}
+        </p>
+      )}
 
       <div className="mt-8 flex items-start gap-3 rounded-2xl border border-border bg-muted/60 p-5">
         <Info className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
-        <p className="text-xs leading-relaxed text-muted-foreground">{DISCLAIMER}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
   );

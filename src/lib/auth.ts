@@ -1,99 +1,135 @@
 import { useSyncExternalStore } from "react";
-
-/*
- * Mock frontend-only auth for the prototype.
- * Accounts and session live in localStorage; no real backend is involved.
- */
+import type { Session } from "@supabase/supabase-js";
+import { requireSupabaseConfig, supabase } from "./supabase";
 
 export interface User {
+  id: string;
   name: string;
   email: string;
 }
 
-interface StoredAccount extends User {
-  password: string;
+interface AuthSnapshot {
+  session: Session | null;
+  user: User | null;
+  loading: boolean;
 }
 
-const USERS_KEY = "medisense:users";
-const SESSION_KEY = "medisense:session";
 const AUTH_EVENT = "medisense-auth";
 
-function readUsers(): Record<string, StoredAccount> {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
+let snapshot: AuthSnapshot = {
+  session: null,
+  user: null,
+  loading: typeof window !== "undefined",
+};
+let initialized = false;
+
+function userFromSession(session: Session | null): User | null {
+  const authUser = session?.user;
+  if (!authUser?.email) return null;
+  const metadata = authUser.user_metadata;
+  const name =
+    typeof metadata["name"] === "string"
+      ? metadata["name"]
+      : typeof metadata["full_name"] === "string"
+        ? metadata["full_name"]
+        : authUser.email.split("@")[0] || "User";
+  return { id: authUser.id, name, email: authUser.email };
 }
 
-function readSession(): User | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
-
-function notify() {
+function emit(next: Partial<AuthSnapshot>) {
+  snapshot = { ...snapshot, ...next };
   window.dispatchEvent(new Event(AUTH_EVENT));
 }
 
-export function getCurrentUser(): User | null {
-  if (typeof window === "undefined") return null;
-  return readSession();
-}
+function initializeAuth() {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
 
-export function signUp(
-  name: string,
-  email: string,
-  password: string,
-): { ok: true } | { ok: false; error: string } {
-  const users = readUsers();
-  const key = email.toLowerCase();
-  if (users[key]) return { ok: false, error: "An account with this email already exists." };
-  users[key] = { name, email: key, password };
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ name, email: key }));
-  notify();
-  return { ok: true };
-}
+  supabase.auth
+    .getSession()
+    .then(({ data }) => {
+      emit({
+        session: data.session,
+        user: userFromSession(data.session),
+        loading: false,
+      });
+    })
+    .catch(() => emit({ session: null, user: null, loading: false }));
 
-export function logIn(
-  email: string,
-  password: string,
-): { ok: true } | { ok: false; error: string } {
-  const users = readUsers();
-  const account = users[email.toLowerCase()];
-  if (!account || account.password !== password) {
-    return { ok: false, error: "Invalid email or password." };
-  }
-  localStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({ name: account.name, email: account.email }),
-  );
-  notify();
-  return { ok: true };
-}
-
-export function logOut() {
-  localStorage.removeItem(SESSION_KEY);
-  notify();
+  supabase.auth.onAuthStateChange((_event, session) => {
+    emit({ session, user: userFromSession(session), loading: false });
+  });
 }
 
 function subscribe(callback: () => void) {
+  initializeAuth();
   window.addEventListener(AUTH_EVENT, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    window.removeEventListener(AUTH_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
+  return () => window.removeEventListener(AUTH_EVENT, callback);
+}
+
+function getSnapshot() {
+  initializeAuth();
+  return snapshot;
+}
+
+const serverSnapshot: AuthSnapshot = { session: null, user: null, loading: false };
+
+export function useAuth(): AuthSnapshot {
+  return useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
 }
 
 export function useUser(): User | null {
-  return useSyncExternalStore(
-    subscribe,
-    () => localStorage.getItem(SESSION_KEY),
-    () => null,
-  ) ? readSession() : null;
+  return useAuth().user;
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  if (typeof window === "undefined") return null;
+  requireSupabaseConfig();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user.email) return null;
+  return userFromSession({
+    access_token: "",
+    refresh_token: "",
+    expires_in: 0,
+    token_type: "bearer",
+    user: data.user,
+  } as Session);
+}
+
+export async function signUp(
+  name: string,
+  email: string,
+  password: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    requireSupabaseConfig();
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, full_name: name } },
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Sign up failed." };
+  }
+}
+
+export async function logIn(
+  email: string,
+  password: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    requireSupabaseConfig();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Log in failed." };
+  }
+}
+
+export async function logOut() {
+  requireSupabaseConfig();
+  await supabase.auth.signOut();
 }

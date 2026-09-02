@@ -10,6 +10,7 @@ export interface Symptom {
   id: string;
   label: string;
   category: string;
+  name_mm?: string;
 }
 
 export const SYMPTOM_CATEGORIES = [
@@ -47,8 +48,45 @@ export const SYMPTOMS: Symptom[] = [
   { id: "dehydration", label: "Dehydration", category: "Other" },
 ];
 
-export const symptomLabel = (id: string) =>
-  SYMPTOMS.find((s) => s.id === id)?.label ?? id;
+export const symptomLabel = (id: string, language: "en" | "mm" = "en") => {
+  const symptom = SYMPTOMS.find((item) => item.id === id);
+  return language === "mm" ? (symptom?.name_mm ?? symptom?.label ?? id) : (symptom?.label ?? id);
+};
+
+export const SYMPTOM_CATEGORY_TRANSLATIONS: Record<string, string> = {
+  General: "အထွေထွေ",
+  "Head & Body": "ဦးခေါင်းနှင့် ခန္ဓာကိုယ်",
+  Respiratory: "အသက်ရှူလမ်းကြောင်း",
+  Digestive: "အစာခြေစနစ်",
+  Skin: "အရေပြား",
+  Other: "အခြား",
+};
+
+export const SYMPTOM_TRANSLATIONS: Record<string, string> = {
+  fever: "ဖျားခြင်း",
+  fatigue: "မောပန်းနွမ်းနယ်ခြင်း",
+  weakness: "အားနည်းခြင်း",
+  chills: "ချမ်းစိမ့်စိမ့်ဖြစ်ခြင်း",
+  loss_of_appetite: "အစားအသောက်ပျက်ခြင်း",
+  headache: "ခေါင်းကိုက်ခြင်း",
+  dizziness: "ခေါင်းမူးခြင်း",
+  body_aches: "တစ်ကိုယ်လုံးကိုက်ခဲခြင်း",
+  joint_pain: "အဆစ်အမြစ်ကိုက်ခဲခြင်း",
+  muscle_pain: "ကြွက်သားကိုက်ခဲခြင်း",
+  cough: "ချောင်းဆိုးခြင်း",
+  sore_throat: "လည်ချောင်းနာခြင်း",
+  runny_nose: "နှာစေးခြင်း",
+  shortness_of_breath: "အသက်ရှူရခက်ခဲခြင်း",
+  chest_discomfort: "ရင်ဘတ်မအီမသာဖြစ်ခြင်း",
+  nausea: "ပျို့အန်ချင်ခြင်း",
+  vomiting: "အန်ခြင်း",
+  diarrhea: "ဝမ်းလျှောခြင်း",
+  abdominal_pain: "ဝမ်းဗိုက်နာကျင်ခြင်း",
+  rash: "အဖုအပိမ့်ထွက်ခြင်း",
+  itching: "ယားယံခြင်း",
+  eye_pain: "မျက်စိနာခြင်း / မျက်လုံးကိုက်ခြင်း",
+  dehydration: "ရေဓာတ်ခမ်းခြောက်ခြင်း",
+};
 
 export const DURATION_OPTIONS = [
   "Less than 1 day",
@@ -68,11 +106,46 @@ export type RainySeason = (typeof RAINY_OPTIONS)[number];
 export interface Condition {
   id: string;
   name: string;
+  title_mm?: string;
+  description_en?: string;
+  description_mm?: string;
+  recommendations_mm?: string[];
   group: "Common" | "Rainy-season relevant";
   /** Symptom id -> importance weight within this condition's pattern. */
   weights: Record<string, number>;
   suggestions: string[];
 }
+
+export const CONDITION_TRANSLATIONS: Record<string, string> = {
+  flu: "တုပ်ကွေးရောဂါ",
+  common_cold: "အအေးမိခြင်း",
+  allergy: "ဓာတ်မတည့်ခြင်း",
+  gastritis: "အစာအိမ်ရောင်ခြင်း",
+  migraine: "ခေါင်းတစ်ခြမ်းကိုက်ရောဂါ",
+  food_poisoning: "အစားအသောက်မှဆိပ်သင့်ခြင်း",
+  respiratory_infection: "အသက်ရှူလမ်းကြောင်း ပိုးဝင်ခြင်း",
+  dengue: "သွေးလွန်တုပ်ကွေး",
+  chikungunya: "ချီကွန်ဂွန်ယာ တုပ်ကွေး",
+  malaria: "ငှက်ဖျားရောဂါ",
+  acute_diarrheal: "ပြင်းထန်ဝမ်းလျှောရောဂါ / ရေမှတစ်ဆင့်ကူးစက်သောရောဂါ",
+};
+
+export const CONDITION_MEDICAL_COPY: Record<
+  string,
+  { description_en: string; description_mm: string; recommendations_mm: string[] }
+> = {
+  flu: { description_en: "Your reported symptoms commonly overlap with influenza.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် တုပ်ကွေးရောဂါနှင့် ကိုက်ညီနိုင်ပါသည်။", recommendations_mm: ["ကောင်းစွာ အနားယူပြီး ပင်ပန်းသော လှုပ်ရှားမှုများကို ရှောင်ပါ။", "နွေးထွေးသော အရည်များ သောက်ပြီး ကိုယ်အပူချိန်ကို စောင့်ကြည့်ပါ။"] },
+  common_cold: { description_en: "Your reported symptoms commonly overlap with a common cold.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် အအေးမိခြင်းနှင့် ကိုက်ညီနိုင်ပါသည်။", recommendations_mm: ["ကောင်းစွာ အနားယူပြီး နွေးထွေးသော အရည်များဖြင့် ရေဓာတ်ဖြည့်ပါ။", "ဆားရည်နွေးနွေးဖြင့် ပလုတ်ကျင်းခြင်းက လည်ချောင်းနာခြင်းကို သက်သာစေနိုင်သည်။"] },
+  allergy: { description_en: "Your reported symptoms may be related to an allergy.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် ဓာတ်မတည့်ခြင်းနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["ဖုန်မှုန့်၊ ပန်းဝတ်မှုန် သို့မဟုတ် အစားအစာကဲ့သို့ ဖြစ်စေနိုင်သော အကြောင်းရင်းကို ရှောင်ပါ။", "ထိခိုက်သော အရေပြားကို သန့်ရှင်းစွာထားပြီး မကုတ်ပါနှင့်။"] },
+  gastritis: { description_en: "Your reported symptoms may be related to stomach irritation.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် အစာအိမ်ရောင်ခြင်းနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["အနည်းငယ်စီ စားပြီး စပ်သော သို့မဟုတ် အချဉ်ဓာတ်များသော အစားအစာများကို ရှောင်ပါ။", "အရက်ကို ရှောင်ပြီး အစာစားပြီးနောက် နာကျင်မှု ဆက်ရှိမရှိ စောင့်ကြည့်ပါ။"] },
+  migraine: { description_en: "Your reported symptoms may be related to migraine.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် ခေါင်းတစ်ခြမ်းကိုက်ရောဂါနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["တိတ်ဆိတ်မှောင်မိုက်သော နေရာတွင် အနားယူပြီး ဖန်သားပြင်ကြည့်ချိန်ကို လျှော့ပါ။", "စိတ်ဖိစီးမှု၊ အလင်းရောင် သို့မဟုတ် အစာမစားခြင်းကဲ့သို့ အစပျိုးအကြောင်းရင်းများကို မှတ်သားပါ။"] },
+  food_poisoning: { description_en: "Your reported symptoms may be related to food poisoning.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် အစားအသောက်မှဆိပ်သင့်ခြင်းနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["ရေဓာတ်ခမ်းခြောက်မှု မဖြစ်စေရန် ဓာတ်ဆားရည်ကို အနည်းငယ်စီ မကြာခဏ သောက်ပါ။", "လက္ခဏာများ သက်သာသည်အထိ အဆီများသော သို့မဟုတ် နို့ထွက်အစားအစာများကို ရှောင်ပါ။"] },
+  respiratory_infection: { description_en: "Your reported symptoms may be related to a respiratory infection.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် အသက်ရှူလမ်းကြောင်း ပိုးဝင်ခြင်းနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["အနားယူပြီး နွေးထွေးစွာနေကာ အသက်ရှူခြင်းနှင့် ကိုယ်အပူချိန်ကို စောင့်ကြည့်ပါ။", "အသက်ရှူရခက်လာပါက အမြန် ဆေးကုသမှု ရယူပါ။"] },
+  dengue: { description_en: "Your reported symptoms may be related to dengue.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် သွေးလွန်တုပ်ကွေးနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["ရေဓာတ်လုံလောက်စွာ ဖြည့်ပြီး ကိုယ်အပူချိန်ကို ပုံမှန် စောင့်ကြည့်ပါ။", "သွေးယိုခြင်း သို့မဟုတ် ဗိုက်နာခြင်းကဲ့သို့ အန္တရာယ်လက္ခဏာများကို သတိပြုပါ။"] },
+  chikungunya: { description_en: "Your reported symptoms may be related to chikungunya.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် ချီကွန်ဂွန်ယာ တုပ်ကွေးနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["နာကျင်သော အဆစ်များကို အနားပေးပြီး ရေဓာတ်ဖြည့်ပါ။", "ခြင်ကာကွယ်မှုကို အသုံးပြုပြီး လက္ခဏာများကို စောင့်ကြည့်ပါ။"] },
+  malaria: { description_en: "Your reported symptoms may be related to malaria.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် ငှက်ဖျားရောဂါနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["ငှက်ဖျားရောဂါကို အတည်ပြုရန် သွေးစစ်ဆေးမှု ပြုလုပ်ရန် စဉ်းစားပါ။", "အဖျားပြန်တက်ခြင်း ရှိမရှိ စောင့်ကြည့်ပြီး ဆေးကုသမှု ရယူပါ။"] },
+  acute_diarrheal: { description_en: "Your reported symptoms may be related to acute diarrheal illness.", description_mm: "သင်ဖော်ပြထားသော လက္ခဏာများသည် ပြင်းထန်ဝမ်းလျှောရောဂါနှင့် ဆက်စပ်နိုင်ပါသည်။", recommendations_mm: ["ဓာတ်ဆားရည်ကို ပုံမှန် သောက်ပါ။", "သန့်ရှင်းစွာ စီမံထားသော သောက်သုံးရေကိုသာ သုံးပြီး လက်ဆေးပါ။"] },
+};
 
 export const CONDITIONS: Condition[] = [
   {
@@ -211,6 +284,27 @@ export const CONDITIONS: Condition[] = [
     ],
   },
 ];
+
+for (const symptom of SYMPTOMS) {
+  symptom.name_mm = SYMPTOM_TRANSLATIONS[symptom.id];
+}
+
+for (const condition of CONDITIONS) {
+  const copy = CONDITION_MEDICAL_COPY[condition.id];
+  condition.title_mm = CONDITION_TRANSLATIONS[condition.id];
+  condition.description_en = copy?.description_en;
+  condition.description_mm = copy?.description_mm;
+  condition.recommendations_mm = copy?.recommendations_mm;
+}
+
+export const WARNING_TRANSLATIONS: Record<string, string> = {
+  "Severe difficulty breathing": "အသက်ရှူရန် အလွန်ခက်ခဲခြင်း",
+  "Severe chest pain": "ရင်ဘတ် အလွန်နာကျင်ခြင်း",
+  Fainting: "သတိလစ်ခြင်း",
+  Confusion: "စိတ်ရှုပ်ထွေးခြင်း",
+  "Severe dehydration": "ရေဓာတ် အလွန်ခမ်းခြောက်ခြင်း",
+  "Severe or rapidly worsening symptoms": "ပြင်းထန်သော သို့မဟုတ် လျင်မြန်စွာ ပိုဆိုးလာသော လက္ခဏာများ",
+};
 
 export type MatchLevel = "High" | "Moderate" | "Low";
 
